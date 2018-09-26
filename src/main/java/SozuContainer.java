@@ -54,6 +54,7 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
     @Override
     protected void configure() {
         mapResourceParameterAsVolume("sozu", "/etc");
+        withNetworkMode("my-net");
         addExposedPorts(DEFAULT_HTTP_PORT, DEFAULT_HTTPS_PORT);
     }
 
