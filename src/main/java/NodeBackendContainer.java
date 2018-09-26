@@ -1,13 +1,9 @@
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.containers.wait.strategy.WaitAllStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
-import org.testcontainers.shaded.javax.ws.rs.Path;
 
-import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Optional;
 
 public class NodeBackendContainer <SELF extends NodeBackendContainer<SELF>> extends GenericContainer<SELF> {
     public static final Integer DEFAULT_PORT = 8080;
@@ -18,9 +14,7 @@ public class NodeBackendContainer <SELF extends NodeBackendContainer<SELF>> exte
                 .withFileFromClasspath("Dockerfile", "node-backend/Dockerfile")
                 .withFileFromClasspath("app.js","node-backend/app.js")
         );
-
-        this.waitStrategy = new WaitAllStrategy()
-                .withStrategy(Wait.forHttp("/").forStatusCode(200));
+        setWaitStrategy(Wait.forHttp("/").forStatusCode(200));
     }
 
     @Override

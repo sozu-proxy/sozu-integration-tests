@@ -54,13 +54,12 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
     @Override
     protected void configure() {
         mapResourceParameterAsVolume("sozu", "/etc");
-        addExposedPort(80);
-        addExposedPort(443);
+        addExposedPorts(DEFAULT_HTTP_PORT, DEFAULT_HTTPS_PORT);
     }
 
     @Override
-    protected Integer getLivenessCheckPort() {
-        return getMappedPort(80);
+    public Set<Integer> getLivenessCheckPortNumbers() {
+        return Collections.singleton(getMappedPort(DEFAULT_HTTP_PORT));
     }
 
     private void mapResourceParameterAsVolume(String paramName, String pathNameInContainer) {
