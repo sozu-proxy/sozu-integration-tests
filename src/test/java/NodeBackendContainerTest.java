@@ -9,11 +9,10 @@ import java.util.logging.Logger;
 import static org.junit.Assert.assertEquals;
 
 public class NodeBackendContainerTest {
-
     private final static Logger LOGGER = Logger.getLogger(NodeBackendContainerTest.class.getName());
 
     @Rule
-    public NodeBackendContainer nodeBackend = new NodeBackendContainer();
+    public NodeBackendContainer nodeBackend = new NodeBackendContainer("172.18.0.4");
 
     @Test
     public void testCorrectResponseFromNodeBackend() throws Exception {

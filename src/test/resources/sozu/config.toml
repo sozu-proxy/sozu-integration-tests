@@ -22,20 +22,13 @@ tls_provider = "rustls"
 protocol = "http"
 address = "0.0.0.0:80"
 
-#[[listeners]]
-#protocol = "https"
-#address = "0.0.0.0:443"
-
-tls_versions = ["TLSv1.2"]
-
 [applications]
 
 [applications.MyApp]
 protocol = "http"
 frontends = [
-    { address = "0.0.0.0:80", hostname = "172.17.0.1" },
-    #{ address = "0.0.0.0:8443", hostname = "lolcatho.st", certificate = "../lib/assets/certificate.pem", key = "../lib/assets/key.pem", certificate_chain = "../lib/assets/certificate_chain.pem" }
+    { address = "0.0.0.0:80", hostname = "example.com" },
 ]
 backends = [
-    { address = "172.17.0.1:1026" }
+    { address = "172.18.0.5:8080" }
 ]
