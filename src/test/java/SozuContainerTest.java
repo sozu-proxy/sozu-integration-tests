@@ -1,5 +1,4 @@
 import org.apache.http.HttpResponse;
-import org.apache.http.StatusLine;
 import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
@@ -33,5 +32,14 @@ public class SozuContainerTest {
 
         assertEquals(HttpURLConnection.HTTP_OK, curlResult.getStatusLine().getStatusCode());
         assertEquals("Hello Node.js Server!", body);
+    }
+
+    @Test
+    public void shouldNotPanicWhenHostIsEmpty() throws Exception {
+        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+
+        final HttpResponse curlResult = curl("-H 'Host: ' " + sozuUrl.toString());
+
+        assertEquals(HttpURLConnection.HTTP_NOT_FOUND, curlResult.getStatusLine().getStatusCode());
     }
 }
