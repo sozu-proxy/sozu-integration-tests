@@ -4,12 +4,20 @@ Experimental test suite for [Sozu](https://github.com/sozu-proxy/sozu)
 
 # Requirements
 
+## Packages
+
 - Gradle 4.8 at least
 - OpenJDK 1.8
 - Docker 1.6.0 at least
 - An environment with more than 2GB free disk space
 
 NOTE: You don't have to install `gradle` to run the tests. This repository provide a gradle wrapper binary: `gradlew` that contain Gradle.
+
+## Network (temporary until fixed)
+
+You *must* create a local `bridge` network named "my-net":
+`docker network create --driver=bridge --subnet=172.18.0.0/16 my-net`
+Use this subnet in your Sozu `config.toml` for the backends address.
 
 # Build
 
