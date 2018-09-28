@@ -56,6 +56,32 @@ public class MyContainer {
 (that'll be use by `testcontainers`). You can still create them in the `@Before` or in your tests method.
 5. `gradle test` or `./gradlew test` to run the test suite.
 
+## Example
+
+```java
+public class MyContainer<SELF extends MyContainer<SELF>> extends GenericContainer<SELF> {
+
+
+    public static final String IMAGE = "helloworld";
+    public static final String DEFAULT_TAG = "latest";
+
+    // Get image from dockerHUB
+    public MyContainer() {
+        super(IMAGE+ ":" + DEFAULT_TAG);
+    }
+
+    @Override
+    protected void configure() {
+        // use with* method to change the docker run command
+    }
+
+    // Build the URL to connect to your container with a mapped port
+    public URL getBaseUrl(String scheme, int port) throws MalformedURLException {
+        return new URL(scheme + "://" + getContainerIpAddress() + ":" + getMappedPort(port));
+    }
+}
+```
+
 # Add a new type of container
 
 1. Create a new `Class` file in `src/main/java`
@@ -66,3 +92,21 @@ public class MyContainer {
 See [here](https://www.testcontainers.org/usage/options.html) for more information
 
 NOTE: Use the `getMappedPort(<port>)` to get the host port mapped to the exposed port in the container.
+
+## Example
+
+```java
+public class MyContainerTest {
+    @Rule
+    public MyContainer myContainer = new MyContainer();
+
+    @Test
+    public void testConnectionForMyContainer() throws Exception {
+        URLConnection urlConnection = myContainer.getBaseUrl().openConnection();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(urlConnection.getInputStream()));
+        String line = reader.readLine();
+        assertEquals("A message", line);
+    }
+}
+
+```
