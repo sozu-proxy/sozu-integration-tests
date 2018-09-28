@@ -31,6 +31,10 @@ This can take additional time to run the test suite the first time because of th
 `testcontainers` doesn't check if the local docker image of your container as the same version as the one on docker hub.
 So you have to `docker pull <your image>` if you work with docker image from docker HUB in your tests.
 
+
+You can set the path to a local sozu Dockerfile with `SOZU_DOCKERFILE` env variable to avoid to download the sozu image from dockerhub.
+
+
 NOTE: To avoid that you can build your container from a local `Dockerfile`:
 This example use the `Classpath` to store the `Dockerfile`.
 
