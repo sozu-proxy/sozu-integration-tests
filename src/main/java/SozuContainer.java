@@ -1,18 +1,13 @@
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.containers.wait.strategy.WaitStrategy;
-import org.testcontainers.containers.wait.strategy.WaitStrategyTarget;
+import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.MountableFile;
+import strategy.HttpWaitStrategy;
 
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.time.Duration;
 import java.util.Collections;
 import java.util.Set;
 import java.util.logging.Logger;
-import java.net.HttpURLConnection;
-
 
 public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericContainer<SELF> {
 
@@ -20,35 +15,25 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
 
     public static final String IMAGE = "clevercloud/sozu";
     public static final String DEFAULT_TAG = "latest";
+
     public static final int DEFAULT_HTTPS_PORT = 443;
     public static final int DEFAULT_HTTP_PORT= 80;
 
+    //Get image from docker HUB
     public SozuContainer() {
-        this(IMAGE + ":" + DEFAULT_TAG);
+        super(IMAGE + ":" + DEFAULT_TAG);
     }
 
-    public SozuContainer(final String dockerImageName) {
-        super(dockerImageName);
+    //Build image from local Dockerfile in the Classpath
+    public SozuContainer(final String pathToDockerFile) {
+        super(new ImageFromDockerfile()
+                .withFileFromClasspath("Dockerfile", pathToDockerFile));
 
-        setWaitStrategy(new WaitStrategy() {
-            @Override
-            public void waitUntilReady(WaitStrategyTarget waitStrategyTarget) {
-                try {
-                    log.info("Trying to connect to " + getBaseUrl("http", 80));
-                    HttpURLConnection connection = (HttpURLConnection) getBaseUrl("http", 80).openConnection();
-                    connection.setRequestMethod("GET");
-                    connection.connect();
-                    log.info("Get response code " + connection.getResponseCode());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            @Override
-            public WaitStrategy withStartupTimeout(Duration startupTimeout) {
-                return null;
-            }
-        });
+        try {
+            setWaitStrategy(new HttpWaitStrategy(this.getBaseUrl("http", DEFAULT_HTTP_PORT)));
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -61,6 +46,17 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
     @Override
     public Set<Integer> getLivenessCheckPortNumbers() {
         return Collections.singleton(getMappedPort(DEFAULT_HTTP_PORT));
+    }
+
+    static public SozuContainer newSozuContainer() {
+        String envPathSozuDockerfile = System.getenv("SOZU_DOCKERFILE");
+
+        if (envPathSozuDockerfile == null || envPathSozuDockerfile.isEmpty()) {
+            return new SozuContainer();
+        }
+        else {
+            return new SozuContainer(envPathSozuDockerfile);
+        }
     }
 
     private void mapResourceParameterAsVolume(String paramName, String pathNameInContainer) {

@@ -20,7 +20,7 @@ public class SozuContainerTest {
     public NodeBackendContainer nodeBackend = new NodeBackendContainer("172.18.0.5");
 
     @Rule
-    public SozuContainer sozuContainer = new SozuContainer();
+    public SozuContainer sozuContainer = SozuContainer.newSozuContainer();
 
     @Test
     public void testCorrectResponseFromSozu() throws Exception {
