@@ -1,7 +1,7 @@
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.MountableFile;
-import strategy.HttpWaitStrategy;
+import strategy.EmptyWaitStrategy;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -29,11 +29,7 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
         super(new ImageFromDockerfile()
                 .withFileFromClasspath("Dockerfile", pathToDockerFile));
 
-        try {
-            setWaitStrategy(new HttpWaitStrategy(this.getBaseUrl("http", DEFAULT_HTTP_PORT)));
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
+        setWaitStrategy(new EmptyWaitStrategy());
     }
 
     @Override
