@@ -5,7 +5,9 @@ import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
@@ -15,10 +17,13 @@ public class HaproxyContainerTest {
     private final static Logger log = Logger.getLogger(HaproxyContainer.class.getName());
 
     @Rule
-    public NodeBackendContainer nodeBackend = new NodeBackendContainer("172.18.0.200");
+    public NodeBackendContainer nodeBackend = new NodeBackendContainer("172.18.0.200", Paths.get("node-backends/app-simple.js"), 8001);
 
     @Rule
     public HaproxyContainer haproxyContainer = new HaproxyContainer();
+
+    public HaproxyContainerTest() throws URISyntaxException {
+    }
 
     @Test
     public void testCorrectResponseFromHaproxy() throws Exception {

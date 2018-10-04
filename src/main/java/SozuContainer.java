@@ -4,6 +4,8 @@ import org.testcontainers.utility.MountableFile;
 import strategy.EmptyWaitStrategy;
 
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Set;
@@ -36,7 +38,7 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
     protected void configure() {
         mapResourceParameterAsVolume("sozu", "/etc");
         withNetworkMode("my-net");
-        addExposedPorts(DEFAULT_HTTP_PORT, DEFAULT_HTTPS_PORT);
+        addExposedPorts(DEFAULT_HTTP_PORT, DEFAULT_HTTPS_PORT, 4000, 4001);
     }
 
     @Override
@@ -62,5 +64,9 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
 
     public URL getBaseUrl(String scheme, int port) throws MalformedURLException {
         return new URL(scheme + "://" + getContainerIpAddress() + ":" + getMappedPort(port));
+    }
+
+    public URI getBaseUri(String scheme, int port) throws URISyntaxException {
+        return new URI(scheme + "://" + getContainerIpAddress() + ":" + getMappedPort(port));
     }
 }
