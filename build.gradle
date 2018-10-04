@@ -16,4 +16,5 @@ dependencies {
 
     compile 'org.testcontainers:testcontainers:1.8.3'
     compile 'org.toile-libre.libe:curl:0.0.19'
+    compile 'org.java-websocket:Java-WebSocket:1.3.9'
 }

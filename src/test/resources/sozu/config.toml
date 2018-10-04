@@ -22,6 +22,14 @@ tls_provider = "rustls"
 protocol = "http"
 address = "0.0.0.0:80"
 
+[[listeners]]
+protocol = "http"
+address = "0.0.0.0:4000"
+
+[[listeners]]
+protocol = "http"
+address = "0.0.0.0:4001"
+
 [applications]
 
 [applications.MyApp]
@@ -30,5 +38,25 @@ frontends = [
     { address = "0.0.0.0:80", hostname = "example.com" },
 ]
 backends = [
-    { address = "172.18.0.5:8080" }
+    { address = "172.18.0.5:8004" }
+]
+
+
+[applications.continue]
+protocol = "http"
+frontends = [
+    { address = "0.0.0.0:4000", hostname = "continue.com" },
+]
+backends = [
+    { address = "172.18.0.6:8005" }
+]
+
+
+[applications.ws]
+protocol = "http"
+frontends = [
+    { address = "0.0.0.0:4001", hostname = "localhost" },
+]
+backends = [
+    { address = "172.18.0.7:8006" }
 ]
