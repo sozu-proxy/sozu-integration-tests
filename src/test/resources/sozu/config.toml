@@ -60,3 +60,13 @@ frontends = [
 backends = [
     { address = "172.18.0.7:8006" }
 ]
+
+[applications.circuit]
+protocol = "http"
+frontends = [
+    { address = "0.0.0.0:80", hostname = "circuit.com" },
+]
+backends = [
+    { address = "172.18.0.201:9000" }, # backend down
+    { address = "172.18.0.201:9001" }, # backend down
+]

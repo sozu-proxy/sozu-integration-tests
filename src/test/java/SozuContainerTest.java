@@ -3,6 +3,8 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.junit.Rule;
 import org.junit.Test;
+import org.testcontainers.containers.output.OutputFrame;
+import org.testcontainers.containers.output.ToStringConsumer;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 import java.io.InputStream;
@@ -16,7 +18,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
+import static java.net.HttpURLConnection.HTTP_OK;
+import static java.net.HttpURLConnection.HTTP_UNAVAILABLE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.toilelibre.libe.curl.Curl.curl;
 
@@ -109,5 +114,25 @@ public class SozuContainerTest {
         } catch(TimeoutException e) {
             fail("We never receive the backend response");
         }
+    }
+
+    @Test
+    public void testHttpCircuitBreaker() throws Exception {
+        final HttpResponse res;
+
+        ToStringConsumer toStringConsumer = new ToStringConsumer();
+        sozuContainer.followOutput(toStringConsumer, OutputFrame.OutputType.STDOUT);
+
+        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+
+        // We send multiple requests because of the CONN_RETRIES of sozu is define at 3
+        // https://github.com/sozu-proxy/sozu/blob/218360d6b518747b70ea12dedb28b83456b54d26/lib/src/network/server.rs#L46
+        curl("-H 'Host: circuit.com' " + sozuUrl.toString());
+        res = curl("-H 'Host: circuit.com' " + sozuUrl.toString());
+
+        assertEquals(HttpURLConnection.HTTP_UNAVAILABLE, res .getStatusLine().getStatusCode());
+
+        String sozuLogs = toStringConsumer.toUtf8String();
+        assertTrue(sozuLogs.contains("max connection attempt reached"));
     }
 }
