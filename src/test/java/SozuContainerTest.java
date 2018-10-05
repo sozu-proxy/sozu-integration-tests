@@ -1,8 +1,13 @@
 import org.apache.http.HttpResponse;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 import java.io.InputStream;
@@ -14,7 +19,6 @@ import java.nio.file.Paths;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -23,7 +27,7 @@ import static org.toilelibre.libe.curl.Curl.curl;
 
 public class SozuContainerTest {
 
-    private final static Logger log = Logger.getLogger(SozuContainerTest.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(SozuContainerTest.class);
 
     @Rule
     public NodeBackendContainer nodeBackend = new NodeBackendContainer("172.18.0.5", Paths.get("node-backends/app-simple.js"), 8004);
@@ -34,10 +38,15 @@ public class SozuContainerTest {
     @Rule
     public NodeBackendContainer nodeWebsocket = new NodeBackendContainer("172.18.0.7", Paths.get("node-backends/server-websocket.js"), 8006);
 
-    @Rule
-    public SozuContainer sozuContainer = SozuContainer.newSozuContainer();
+    @ClassRule
+    public static SozuContainer sozuContainer = SozuContainer.newSozuContainer();
 
     public SozuContainerTest() throws URISyntaxException {}
+
+    @BeforeClass
+    public static void setUp() {
+        sozuContainer.followOutput(new Slf4jLogConsumer(logger));
+    }
 
     @Test
     public void testCorrectResponseFromSozu() throws Exception {
