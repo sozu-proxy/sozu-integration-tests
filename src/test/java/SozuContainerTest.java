@@ -135,4 +135,13 @@ public class SozuContainerTest {
         String sozuLogs = toStringConsumer.toUtf8String();
         assertTrue(sozuLogs.contains("max connection attempt reached"));
     }
+
+    @Test
+    public void testRetryPolicy() throws Exception {
+        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+
+        HttpResponse res = curl("-H 'Connection: close' -H 'Host: retry.com' " + sozuUrl.toString());
+
+        assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
+    }
 }

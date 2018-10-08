@@ -70,3 +70,13 @@ backends = [
     { address = "172.18.0.201:9000" }, # backend down
     { address = "172.18.0.201:9001" }, # backend down
 ]
+
+[applications.retry]
+protocol = "http"
+frontends = [
+    { address = "0.0.0.0:80", hostname = "retry.com" },
+]
+backends = [
+    { address = "172.18.0.201:9000" }, # backend down
+    { address = "172.18.0.6:8005" },   # backend up
+]
