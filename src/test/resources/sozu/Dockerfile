@@ -30,6 +30,8 @@ RUN apk update && apk add --no-cache openssl-dev \
 
 RUN cp target/release/sozu /
 
+RUN cp target/release/sozuctl /
+
 RUN echo `ls /`
 
 ENV SOZU_CONFIG /etc/sozu/config.toml
