@@ -3,11 +3,14 @@ import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.MountableFile;
 import strategy.EmptyWaitStrategy;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -68,5 +71,29 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
 
     public URI getBaseUri(String scheme, int port) throws URISyntaxException {
         return new URI(scheme + "://" + getContainerIpAddress() + ":" + getMappedPort(port));
+    }
+
+    public String execSozuctlCommand(String command, List<String> args) {
+        ArrayList sozuctlCmd = new ArrayList() {{
+            //TODO: change the WORKDIR in Dockerfile to avoid to use ../../
+            add("../../sozuctl");
+            add("-c");
+            add("/etc/sozu/config.toml");
+            add(command);
+            addAll(args);
+        }};
+
+        String [] sozuctlCmdTmp = (String[]) sozuctlCmd.toArray(new String[sozuctlCmd.size()]); // nice Java
+
+        try {
+            ExecResult res = this.execInContainer(sozuctlCmdTmp);
+            return res.getStdout();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        return "";
     }
 }
