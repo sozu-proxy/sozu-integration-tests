@@ -80,3 +80,19 @@ backends = [
     { address = "172.18.0.201:9000" }, # backend down
     { address = "172.18.0.6:8005" },   # backend up
 ]
+
+[applications.nopathbegin]
+protocol = "http"
+frontends = [
+    { address = "0.0.0.0:80", hostname = "pathbegin.com" },
+]
+backends = []
+
+[applications.pathbegin]
+protocol = "http"
+frontends = [
+    { address = "0.0.0.0:80", hostname = "pathbegin.com", path_begin = "/api" },
+]
+backends = [
+    { address = "172.18.0.6:8005" },
+]

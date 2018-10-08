@@ -144,4 +144,20 @@ public class SozuContainerTest {
 
         assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
     }
+
+    @Test
+    public void testPathbegin() throws Exception {
+        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+
+        // see config.toml
+        String hostname = "pathbegin.com";
+        String pathPrefix = "/api";
+        String url = String.format("-H 'Host: %s' %s", hostname, sozuUrl.toString());
+
+        HttpResponse res = curl(url);
+        HttpResponse resWithPathBegin = curl(url + pathPrefix);
+
+        assertEquals(HTTP_UNAVAILABLE, res.getStatusLine().getStatusCode());
+        assertEquals(HTTP_OK, resWithPathBegin.getStatusLine().getStatusCode());
+    }
 }
