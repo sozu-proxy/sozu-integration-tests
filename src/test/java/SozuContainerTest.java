@@ -125,12 +125,9 @@ public class SozuContainerTest {
 
         URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
 
-        // We send multiple requests because of the CONN_RETRIES of sozu is define at 3
-        // https://github.com/sozu-proxy/sozu/blob/218360d6b518747b70ea12dedb28b83456b54d26/lib/src/network/server.rs#L46
-        curl("-H 'Host: circuit.com' " + sozuUrl.toString());
         res = curl("-H 'Host: circuit.com' " + sozuUrl.toString());
 
-        assertEquals(HttpURLConnection.HTTP_UNAVAILABLE, res .getStatusLine().getStatusCode());
+        assertEquals(HttpURLConnection.HTTP_UNAVAILABLE, res.getStatusLine().getStatusCode());
 
         String sozuLogs = toStringConsumer.toUtf8String();
         assertTrue(sozuLogs.contains("max connection attempt reached"));
