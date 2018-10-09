@@ -21,9 +21,7 @@ import java.util.logging.Logger;
 
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.net.HttpURLConnection.HTTP_UNAVAILABLE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.toilelibre.libe.curl.Curl.curl;
 
 
@@ -210,5 +208,59 @@ public class SozuContainerTest {
         assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
         body = IOUtils.toString(res.getEntity().getContent(), "UTF-8");
         assertEquals(backend2.getId(), body);
+
+        nodeBackend1.stop();
+        nodeBackend2.stop();
+    }
+
+    @Test
+    public void testStickySessions () throws Exception {
+        String appId = "stickysession";
+        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+
+
+        // Set up an application with two backends, and sticky sessions with a specific sticky id (see config.toml)
+        Backend backend1 = new Backend("rogue", "172.18.0.10", 8002);
+        Backend backend2 = new Backend("war", "172.18.0.11", 8003);
+        NodeBackendContainer nodeBackend1 = new NodeBackendContainer(backend1.getAddress(), Paths.get("node-backends/app-id.js"), backend1.getPort());
+        NodeBackendContainer nodeBackend2 = new NodeBackendContainer(backend2.getAddress(), Paths.get("node-backends/app-id.js"), backend2.getPort());
+        nodeBackend1.withEnv("ID", backend1.getId()).start();
+        nodeBackend2.withEnv("ID", backend2.getId()).start();
+
+
+        // We check that we got a sticky session cookie, and we store the id of the backend that answered
+        String url = String.format("-H 'Connection: close' -H 'Host: %s.com' %s", appId, sozuUrl.toString());
+        HttpResponse res = curl(url);
+        String firstSozuBalanceId = res.getFirstHeader("Set-Cookie").getValue();
+        String firstContent = IOUtils.toString(res.getEntity().getContent(), "UTF-8");
+
+
+        // We check that we got a response from the same backend
+        String urlWithCookie = String.format("-H 'Cookie: %s' -H 'Connection: close' -H 'Host: %s.com' %s", firstSozuBalanceId, appId, sozuUrl.toString());
+        res = curl(urlWithCookie);
+
+        String body = IOUtils.toString(res.getEntity().getContent(), "UTF-8");
+        assertEquals(firstContent, body);
+
+
+        // We remove all the backends and set up new ones
+        sozuContainer.removeBackend(appId, backend1.getId(), backend1.getAddressWithPort());
+        sozuContainer.removeBackend(appId, backend1.getId(), backend1.getAddressWithPort());
+        Backend backend3 = new Backend("warlock", "172.18.0.12", 8004);
+        NodeBackendContainer nodeBackend3 = new NodeBackendContainer(backend3.getAddress(), Paths.get("node-backends/app-id.js"), backend3.getPort());
+        nodeBackend3.withEnv("ID", backend3.getId()).start();
+        sozuContainer.addBackend(appId, backend3.getId(), backend3.getAddressWithPort());
+
+
+        // We check that we got a response from a different backend, and a new session cookie
+        res = curl(urlWithCookie);
+
+        String bodyOfNewBackend = IOUtils.toString(res.getEntity().getContent(), "UTF-8");
+        assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
+        assertNotEquals(firstContent, bodyOfNewBackend);
+
+        nodeBackend1.stop();
+        nodeBackend2.stop();
+        nodeBackend3.stop();
     }
 }
