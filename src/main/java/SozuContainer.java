@@ -96,4 +96,32 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
 
         return "";
     }
+
+    public String removeBackend(String appId, String backendId, String backendAddress) {
+        ArrayList args = new ArrayList() {{
+            add("remove");
+            add("-i");
+            add(appId);
+            add("--backend-id");
+            add(backendId);
+            add("-a");
+            add(backendAddress);
+        }};
+
+        return execSozuctlCommand("backend", args);
+    }
+
+    public String addBackend(String appId, String backendId, String backendAddress) {
+        ArrayList args = new ArrayList() {{
+            add("add");
+            add("-i");
+            add(appId);
+            add("--backend-id");
+            add(backendId);
+            add("-a");
+            add(backendAddress);
+        }};
+
+        return execSozuctlCommand("backend", args);
+    }
 }
