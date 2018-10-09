@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.output.ToStringConsumer;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
+import utils.Backend;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -172,5 +173,42 @@ public class SozuContainerTest {
 
         assertEquals(HTTP_UNAVAILABLE, res.getStatusLine().getStatusCode());
         assertEquals(HTTP_OK, resWithPathBegin.getStatusLine().getStatusCode());
+    }
+
+    @Test
+    public void testRemoveBackendBetweenRequests() throws Exception {
+        HttpResponse res;
+        String body;
+        String appId = "removebackendbetweenrequests";
+        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+
+
+        Backend backend1 = new Backend("rogue", "172.18.0.8", 8000);
+        Backend backend2 = new Backend("war", "172.18.0.9", 8001);
+        NodeBackendContainer nodeBackend1 = new NodeBackendContainer(backend1.getAddress(), Paths.get("node-backends/app-id.js"), backend1.getPort());
+        NodeBackendContainer nodeBackend2 = new NodeBackendContainer(backend2.getAddress(), Paths.get("node-backends/app-id.js"), backend2.getPort());
+        nodeBackend1.withEnv("ID", backend1.getId()).start();
+        nodeBackend2.withEnv("ID", backend2.getId()).start();
+
+        String url = String.format("-H 'Connection: keep-alive' -H 'Host: %s.com' %s", appId, sozuUrl.toString());
+
+
+        // Set up an application with one backend
+        // Check that we receive a response, and that it comes from the first backend
+        sozuContainer.addBackend(appId, backend1.getId(), backend1.getAddressWithPort());
+        res = curl(url);
+        assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
+        body = IOUtils.toString(res.getEntity().getContent(), "UTF-8");
+        assertEquals(backend1.getId(), body);
+
+
+        // Change the application's configuration in sozu to remove the first backend and replace it with the second one
+        sozuContainer.addBackend(appId, backend2.getId(), backend2.getAddressWithPort());
+        sozuContainer.removeBackend(appId, backend1.getId(), backend1.getAddressWithPort());
+        res = curl(url);
+        // Check that we receive a response, and that it comes from the second backend
+        assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
+        body = IOUtils.toString(res.getEntity().getContent(), "UTF-8");
+        assertEquals(backend2.getId(), body);
     }
 }

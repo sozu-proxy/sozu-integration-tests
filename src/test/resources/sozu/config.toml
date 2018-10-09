@@ -96,3 +96,10 @@ frontends = [
 backends = [
     { address = "172.18.0.6:8005" },
 ]
+
+[applications.removebackendbetweenrequests]
+protocol = "http"
+frontends = [
+    { address = "0.0.0.0:80", hostname = "removebackendbetweenrequests.com" },
+]
+backends = []
