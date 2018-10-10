@@ -2,6 +2,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.MountableFile;
 import strategy.EmptyWaitStrategy;
+import utils.LoadBalancingPolicy;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -123,5 +124,27 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
         }};
 
         return execSozuctlCommand("backend", args);
+    }
+
+    public String addApplication(String appId, LoadBalancingPolicy lb) {
+        ArrayList args = new ArrayList() {{
+            add("add");
+            add("-i");
+            add(appId);
+            add("--load-balancing-policy");
+            add(lb.toString());
+        }};
+
+        return execSozuctlCommand("application", args);
+    }
+
+    public String removeApplication(String appId) {
+        ArrayList args = new ArrayList() {{
+            add("remove");
+            add("--id");
+            add(appId);
+        }};
+
+        return execSozuctlCommand("application", args);
     }
 }
