@@ -116,3 +116,13 @@ backends = [
     { address = "172.18.0.10:8002", sticky_id = "rogue" },
     { address = "172.18.0.11:8003", sticky_id = "war" },
 ]
+
+[applications.httpsredirect]
+https_redirect = true
+protocol = "http"
+frontends = [
+    { address = "0.0.0.0:80", hostname = "httpsredirect.com" },
+]
+backends = [
+    { address = "172.18.0.5:8004" }
+]

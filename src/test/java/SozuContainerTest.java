@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
+import static java.net.HttpURLConnection.HTTP_MOVED_PERM;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.net.HttpURLConnection.HTTP_UNAVAILABLE;
 import static org.junit.Assert.*;
@@ -262,5 +263,18 @@ public class SozuContainerTest {
         nodeBackend1.stop();
         nodeBackend2.stop();
         nodeBackend3.stop();
+    }
+
+    @Test
+    public void testHttpsredirect() throws Exception {
+        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+
+        HttpResponse res = curl("-H 'Host: httpsredirect.com' " + sozuUrl.toString());
+
+        // Verify that the proxy answers with a 301 to the HTTPS version
+        assertEquals(HTTP_MOVED_PERM, res.getStatusLine().getStatusCode());
+
+        String location = res.getFirstHeader("Location").getValue();
+        assertEquals("https://httpsredirect.com/", location);
     }
 }
