@@ -23,6 +23,10 @@ protocol = "http"
 address = "0.0.0.0:80"
 sticky_name = "SOZUBALANCEID"
 
+[[listeners]]
+protocol = "https"
+address = "0.0.0.0:443"
+
 
 [[listeners]]
 protocol = "http"
@@ -122,7 +126,6 @@ https_redirect = true
 protocol = "http"
 frontends = [
     { address = "0.0.0.0:80", hostname = "httpsredirect.com" },
+    { address = "0.0.0.0:443", hostname = "httpsredirect.com",  certificate = "/certs/httpsredirect.com.crt", key = "/certs/httpsredirect.com.key" },
 ]
-backends = [
-    { address = "172.18.0.5:8004" }
-]
+backends = []
