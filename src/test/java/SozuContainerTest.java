@@ -17,8 +17,10 @@ import java.nio.file.Paths;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static java.net.HttpURLConnection.HTTP_MOVED_PERM;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.net.HttpURLConnection.HTTP_UNAVAILABLE;
 import static org.junit.Assert.*;
@@ -262,5 +264,48 @@ public class SozuContainerTest {
         nodeBackend1.stop();
         nodeBackend2.stop();
         nodeBackend3.stop();
+    }
+
+    @Test
+    public void testHttpsredirect() throws Exception {
+        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+        int sozuHttpsPort = sozuContainer.getMappedPort(SozuContainer.DEFAULT_HTTPS_PORT);
+
+
+        // Setup the backend with app-x-forwarded-proto.js as binary
+        Backend backend = new Backend("paladin", "172.18.0.14", 8006);
+        NodeBackendContainer nodeBackend = new NodeBackendContainer(backend.getAddress(), Paths.get("node-backends/app-x-forwarded-proto.js"), backend.getPort());
+        nodeBackend.start();
+        sozuContainer.addBackend("httpsredirect", backend.getId(), backend.getAddressWithPort());
+
+
+        // Verify that the proxy answers with a 301 to the HTTPS version
+        HttpResponse res = curl("-H 'Host: httpsredirect.com' " + sozuUrl.toString());
+        assertEquals(HTTP_MOVED_PERM, res.getStatusLine().getStatusCode());
+
+        String location = res.getFirstHeader("Location").getValue();
+        assertEquals("https://httpsredirect.com/", location);
+
+
+        // The client does a HTTPS request
+        // FIXME We set in a magic string the ip gateway of the bridge network until #17 is fixed
+        // TODO Maybe we should move the /certs folder in a better place
+        Process p = Runtime.getRuntime().exec("curl -s --cacert ./src/test/resources/certs/CA.pem --resolve httpsredirect.com:" + sozuHttpsPort + ":172.18.0.1 https://httpsredirect.com:" + sozuHttpsPort);
+        String stdout = IOUtils.toString(p.getInputStream(), "UTF-8");
+        String stderr = IOUtils.toString(p.getErrorStream(), "UTF-8");
+
+
+        // Verify that the server gets the correct protocol in the Forwarded-* headers
+        if(!stdout.isEmpty()) {
+            // The backend should return the x-forwarded-proto header content
+            assertEquals("https", stdout);
+        }
+        else {
+            log.log(Level.SEVERE, stderr);
+            nodeBackend.stop();
+            fail();
+        }
+
+        nodeBackend.stop();
     }
 }

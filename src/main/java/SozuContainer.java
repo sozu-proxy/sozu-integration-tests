@@ -41,6 +41,7 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
     @Override
     protected void configure() {
         mapResourceParameterAsVolume("sozu", "/etc");
+        mapResourceParameterAsVolume("certs", "/"); //FIXME needed only for testHttpsredirect make this more configurable
         withNetworkMode("my-net");
         addExposedPorts(DEFAULT_HTTP_PORT, DEFAULT_HTTPS_PORT, 4000, 4001);
     }
