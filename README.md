@@ -15,9 +15,37 @@ NOTE: You don't have to install `gradle` to run the tests. This repository provi
 
 ## Network (temporary until fixed)
 
-You *must* create a local `bridge` network named "my-net":
-`docker network create --driver=bridge --subnet=172.18.0.0/16 my-net`
-Use this subnet in your Sozu `config.toml` for the backends address.
+We need to be able to specify an ipv4 and ipv6 address for our backend because sozu can't resolve DNS and the docker daemon can do that only in swarm mode.
+So we have to create a local `bridge` network named "my-net" to use the `--ip` and `--ip6` docker run parameters supported on user defined networks only.
+
+Firt enable IPv6 support for the docker daemon:
+
+1. Edit /etc/docker/daemon.json and set:
+
+ ```json
+{
+    "ipv6": true,
+    "fixed-cidr-v6": "2001:db8::/64"
+}
+ ```
+ Save the file.
+
+2. Reload the Docker configuration file.
+
+`systemctl restart docker`
+
+3. Create the network bridge
+
+```sh
+sudo docker network create \
+              --ipv6 \
+              --driver=bridge \
+              --subnet=172.18.0.0/16 \
+              --subnet=2002:ac14:0000::/48 \
+              my-net
+```
+
+5. Use this subnet ("my-net") in your Sozu `config.toml` for the backends address.
 
 # Build
 
