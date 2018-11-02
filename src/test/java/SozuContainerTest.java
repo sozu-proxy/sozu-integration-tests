@@ -1,8 +1,10 @@
 import org.apache.http.HttpResponse;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
+import org.junit.rules.TestName;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.output.ToStringConsumer;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
@@ -43,7 +45,25 @@ public class SozuContainerTest {
     @Rule
     public SozuContainer sozuContainer = SozuContainer.newSozuContainer();
 
+    private ToStringConsumer toStringSozuConsumer;
+
+    @Rule
+    // Use the test watcher to print the logs of sozu if a test failed
+    public TestWatcher watcher = new TestWatcher() {
+        @Override
+        protected void failed(Throwable e, Description description) {
+            String sozuLogs = toStringSozuConsumer.toUtf8String();
+            System.out.println(sozuLogs);
+        }
+    };
+
     public SozuContainerTest() throws URISyntaxException {}
+
+    @Before
+    public void beforeEach() {
+        toStringSozuConsumer = new ToStringConsumer();
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
+    }
 
     @Test
     public void testCorrectResponseFromSozu() throws Exception {
