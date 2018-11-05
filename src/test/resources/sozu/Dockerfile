@@ -16,7 +16,9 @@ RUN apk add --no-cache openssl-dev \
 
 RUN git clone --single-branch --branch master --depth 1 https://github.com/sozu-proxy/sozu.git .
 
-RUN cargo build --release --features use-openssl
+RUN cargo build --release --all-features --manifest-path bin/Cargo.toml
+
+RUN cargo build --release --all-features --manifest-path ctl/Cargo.toml
 
 RUN echo `ls -l os-build/docker`
 
