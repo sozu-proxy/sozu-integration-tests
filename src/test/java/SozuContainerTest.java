@@ -151,7 +151,7 @@ public class SozuContainerTest {
         assertEquals(HttpURLConnection.HTTP_UNAVAILABLE, res.getStatusLine().getStatusCode());
 
         String sozuLogs = toStringConsumer.toUtf8String();
-        assertTrue(sozuLogs.contains("circuit\t max connection attempt reached"));
+        assertTrue(sozuLogs.contains("max connection attempt reached"));
     }
 
     @Test
