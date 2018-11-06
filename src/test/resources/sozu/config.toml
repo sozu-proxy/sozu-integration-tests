@@ -23,6 +23,11 @@ protocol = "http"
 address = "0.0.0.0:80"
 sticky_name = "SOZUBALANCEID"
 
+#IPV6 listener
+[[listeners]]
+protocol = "http"
+address = "[2002:ac14::ff]:81"
+
 [[listeners]]
 protocol = "https"
 address = "0.0.0.0:443"
@@ -129,3 +134,12 @@ frontends = [
     { address = "0.0.0.0:443", hostname = "httpsredirect.com",  certificate = "/certs/httpsredirect.com.crt", key = "/certs/httpsredirect.com.key" },
 ]
 backends = []
+
+[applications.ipv6]
+protocol = "http"
+frontends = [
+    { address = "[2002:ac14::ff]:81", hostname = "ipv6.com" },
+]
+backends = [
+    { address = "[2002:ac14::ff01]:8007" }
+]

@@ -2,7 +2,6 @@ import org.apache.http.HttpResponse;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.junit.*;
-import org.junit.rules.TestName;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.testcontainers.containers.output.OutputFrame;
@@ -33,17 +32,17 @@ public class SozuContainerTest {
 
     private final static Logger log = Logger.getLogger(SozuContainerTest.class.getName());
 
-    @Rule
-    public NodeBackendContainer nodeBackend = new NodeBackendContainer("172.18.0.5", Paths.get("node-backends/app-simple.js"), 8004);
+    @ClassRule
+    public static NodeBackendContainer nodeBackend = new NodeBackendContainer("172.18.0.5", Paths.get("node-backends/app-simple.js"), 8004);
+
+    @ClassRule
+    public static NodeBackendContainer nodeBackendHttp100 = new NodeBackendContainer("172.18.0.6", Paths.get("node-backends/app-http-continue.js"), 8005);
+
+    @ClassRule
+    public static NodeBackendContainer nodeWebsocket = new NodeBackendContainer("172.18.0.7", Paths.get("node-backends/server-websocket.js"), 8006);
 
     @Rule
-    public NodeBackendContainer nodeBackendHttp100 = new NodeBackendContainer("172.18.0.6", Paths.get("node-backends/app-http-continue.js"), 8005);
-
-    @Rule
-    public NodeBackendContainer nodeWebsocket = new NodeBackendContainer("172.18.0.7", Paths.get("node-backends/server-websocket.js"), 8006);
-
-    @Rule
-    public SozuContainer sozuContainer = SozuContainer.newSozuContainer();
+    public SozuContainer sozuContainer = SozuContainer.newSozuContainer("2002:ac14::ff");
 
     private ToStringConsumer toStringSozuConsumer;
 
@@ -327,5 +326,31 @@ public class SozuContainerTest {
         }
 
         nodeBackend.stop();
+    }
+
+    @Test
+    public void testConnectionWithIpv6() throws Exception {
+        // Setup the backend with ipv6 address
+        Backend backend = new Backend("paladin", "172.18.0.14", 8007);
+        NodeBackendContainer nodeBackend = new NodeBackendContainer(backend.getAddress(), Paths.get("node-backends/app-simple.js"), backend.getPort());
+        nodeBackend.setIpv6("2002:ac14::ff01");
+        nodeBackend.start();
+
+        //FIXME: find a java http client that can resolve a ipv6 address
+        Process p = Runtime.getRuntime().exec("curl -s -g -6 --resolve ipv6.com:81:[2002:ac14::ff] http://ipv6.com:81");
+
+        String stdout = IOUtils.toString(p.getInputStream(), "UTF-8");
+        String stderr = IOUtils.toString(p.getErrorStream(), "UTF-8");
+
+        // Verify that we get the backend response
+        if(!stdout.isEmpty()) {
+            assertEquals("Hello Node.js Server!", stdout);
+        }
+        else {
+            log.log(Level.SEVERE, stderr);
+            sozuContainer.stop();
+            nodeBackend.stop();
+            fail();
+        }
     }
 }
