@@ -10,9 +10,10 @@ import java.nio.file.Path;
 public class NodeBackendContainer <SELF extends NodeBackendContainer<SELF>> extends GenericContainer<SELF> {
     public static final Integer DEFAULT_PORT = 8080;
     private String ipv4;
+    private String ipv6 = "";
     private int portHttp;
 
-    public NodeBackendContainer(String ipv4, Path path, int portHttp) throws URISyntaxException {
+    public NodeBackendContainer(String ipv4, Path path, int portHttp) {
         super(
             new ImageFromDockerfile()
                     .withFileFromClasspath("app.js", path.toString())
@@ -40,10 +41,17 @@ public class NodeBackendContainer <SELF extends NodeBackendContainer<SELF>> exte
         addExposedPort(portHttp);
         withNetworkMode("my-net");
         withEnv("PORT", String.valueOf(portHttp));
-        withCreateContainerCmdModifier(cmd -> cmd.withIpv4Address(ipv4));
+        withCreateContainerCmdModifier(cmd -> cmd.withIpv4Address(this.ipv4));
+
+        if (!this.ipv6.isEmpty())
+            withCreateContainerCmdModifier(cmd -> cmd.withIpv6Address(this.ipv6));
     }
 
     public URL getBaseUrl() throws MalformedURLException {
         return new URL("http://" + getContainerIpAddress() + ":" + getMappedPort(portHttp));
+    }
+
+    public void setIpv6(String ipv6) {
+        this.ipv6 = ipv6;
     }
 }

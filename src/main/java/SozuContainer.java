@@ -25,17 +25,21 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
     public static final int DEFAULT_HTTPS_PORT = 443;
     public static final int DEFAULT_HTTP_PORT= 80;
 
+    private String ipv6;
+
     //Get image from docker HUB
-    public SozuContainer() {
+    public SozuContainer(String ipv6) {
         super(IMAGE + ":" + DEFAULT_TAG);
+        this.ipv6 = ipv6;
     }
 
     //Build image from local Dockerfile in the Classpath
-    public SozuContainer(final String pathToDockerFile) {
+    public SozuContainer(final String pathToDockerFile, final String ipv6) {
         super(new ImageFromDockerfile()
                 .withFileFromClasspath("Dockerfile", pathToDockerFile));
 
         setWaitStrategy(new EmptyWaitStrategy());
+        this.ipv6 = ipv6;
     }
 
     @Override
@@ -43,7 +47,8 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
         mapResourceParameterAsVolume("sozu", "/etc");
         mapResourceParameterAsVolume("certs", "/"); //FIXME needed only for testHttpsredirect make this more configurable
         withNetworkMode("my-net");
-        addExposedPorts(DEFAULT_HTTP_PORT, DEFAULT_HTTPS_PORT, 4000, 4001);
+        withCreateContainerCmdModifier(cmd -> cmd.withIpv6Address(this.ipv6));
+        addExposedPorts(DEFAULT_HTTP_PORT, DEFAULT_HTTPS_PORT, 4000, 4001, 81);
     }
 
     @Override
@@ -51,14 +56,14 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
         return Collections.singleton(getMappedPort(DEFAULT_HTTP_PORT));
     }
 
-    static public SozuContainer newSozuContainer() {
+    static public SozuContainer newSozuContainer(String ipv6) {
         String envPathSozuDockerfile = System.getenv("SOZU_DOCKERFILE");
 
         if (envPathSozuDockerfile == null || envPathSozuDockerfile.isEmpty()) {
-            return new SozuContainer();
+            return new SozuContainer(ipv6);
         }
         else {
-            return new SozuContainer(envPathSozuDockerfile);
+            return new SozuContainer(envPathSozuDockerfile, ipv6);
         }
     }
 
