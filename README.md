@@ -114,3 +114,21 @@ public class MyContainerTest {
 }
 
 ```
+
+# Known issues
+
+#### Can't get Docker image
+
+Sometime `libcontainers` fail at download the docker images due to a network problem during the first run or when these are not already present in the host.
+You can just replay the test suite to fix this.
+
+```bash
+  SozuContainerTest
+    ✘ classMethod
+      org.testcontainers.containers.ContainerFetchException: Can't get Docker image: org.testcontainers.images.builder.ImageFromDockerfile@1dfc4dc1
+
+SozuContainerTest > classMethod FAILED
+    org.testcontainers.containers.ContainerFetchException: Can't get Docker image: org.testcontainers.images.builder.ImageFromDockerfile@1dfc4dc1
+        Caused by:
+        com.github.dockerjava.api.exception.DockerClientException: Could not build image: The command '/bin/sh -c npm install' returned a non-zero code: 1
+```
