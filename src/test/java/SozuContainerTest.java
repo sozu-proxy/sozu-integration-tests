@@ -1,3 +1,4 @@
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.http.HttpResponse;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
@@ -7,6 +8,7 @@ import org.junit.runner.Description;
 import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.output.ToStringConsumer;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
+import org.testcontainers.utility.MountableFile;
 import utils.Backend;
 
 import java.io.InputStream;
@@ -352,5 +354,34 @@ public class SozuContainerTest {
             nodeBackend.stop();
             fail();
         }
+    }
+
+    @Test
+    public void testchunkedResponse() throws Exception {
+        String largeFilePath = "node-backends/lorem.txt";
+        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+
+        Backend backend = new Backend("waagh", "172.18.0.13", 8005);
+        NodeBackendContainer nodeBackend = new NodeBackendContainer(backend.getAddress(), Paths.get("node-backends/app-chunk-response.js"), backend.getPort());
+        nodeBackend.withCopyFileToContainer(MountableFile.forClasspathResource(largeFilePath),"/");
+        nodeBackend.withEnv("FILE", "lorem.txt");
+        nodeBackend.start();
+
+
+        // The server sends a file as chunked response
+        HttpResponse res = curl("-H 'Host: chunkedresponse.com' " + sozuUrl.toString());
+        String transferEncoding = res.getFirstHeader("Transfer-Encoding").getValue();
+
+        // Verify if the client receives all the packets and check the file sha1sum
+        assertEquals("chunked", transferEncoding);
+        assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
+        InputStream inputStreamContent = res.getEntity().getContent();
+        InputStream inputStreamFile = this.getClass().getClassLoader().getResourceAsStream(largeFilePath);
+
+        String sha1Hex = DigestUtils.sha1Hex(inputStreamContent);
+        String sha1HexExpected = DigestUtils.sha1Hex(inputStreamFile);
+        assertEquals(sha1Hex, sha1HexExpected);
+
+        nodeBackend.stop();
     }
 }

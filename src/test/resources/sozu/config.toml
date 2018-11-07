@@ -143,3 +143,12 @@ frontends = [
 backends = [
     { address = "[2002:ac14::ff01]:8007" }
 ]
+
+[applications.chunkedresponse]
+protocol = "http"
+frontends = [
+    { address = "0.0.0.0:80", hostname = "chunkedresponse.com" },
+]
+backends = [
+    { address = "172.18.0.13:8005" }
+]
