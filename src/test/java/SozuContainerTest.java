@@ -370,9 +370,10 @@ public class SozuContainerTest {
 
         // The server sends a file as chunked response
         HttpResponse res = curl("-H 'Host: chunkedresponse.com' " + sozuUrl.toString());
-
+        String transferEncoding = res.getFirstHeader("Transfer-Encoding").getValue();
 
         // Verify if the client receives all the packets and check the file sha1sum
+        assertEquals("chunked", transferEncoding);
         assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
         InputStream inputStreamContent = res.getEntity().getContent();
         InputStream inputStreamFile = this.getClass().getClassLoader().getResourceAsStream(largeFilePath);
