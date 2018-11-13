@@ -1,3 +1,4 @@
+import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.MountableFile;
@@ -5,10 +6,7 @@ import strategy.EmptyWaitStrategy;
 import utils.LoadBalancingPolicy;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -22,32 +20,43 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
     public static final String IMAGE = "clevercloud/sozu";
     public static final String DEFAULT_TAG = "latest";
 
+    public static final String MOUNT_POINT_CONFIG_FILE = "/config.toml";
+
     public static final int DEFAULT_HTTPS_PORT = 443;
     public static final int DEFAULT_HTTP_PORT= 80;
 
-    private String ipv6;
+    private Inet4Address ipv4;
+    private Inet6Address ipv6;
+    private String configFile;
 
     //Get image from docker HUB
-    public SozuContainer(String ipv6) {
+    public SozuContainer(Inet4Address ipv4, Inet6Address ipv6, final String configFile) {
         super(IMAGE + ":" + DEFAULT_TAG);
+        this.ipv4 = ipv4;
         this.ipv6 = ipv6;
+        this.configFile = configFile;
     }
 
     //Build image from local Dockerfile in the Classpath
-    public SozuContainer(final String pathToDockerFile, final String ipv6) {
+    public SozuContainer(final String pathToDockerFile, Inet4Address ipv4, Inet6Address ipv6, final String configFile) {
         super(new ImageFromDockerfile()
                 .withFileFromClasspath("Dockerfile", pathToDockerFile));
 
         setWaitStrategy(new EmptyWaitStrategy());
+        this.ipv4 = ipv4;
         this.ipv6 = ipv6;
+        this.configFile = configFile;
     }
 
     @Override
     protected void configure() {
-        mapResourceParameterAsVolume("sozu", "/etc");
+        withClasspathResourceMapping(this.configFile, MOUNT_POINT_CONFIG_FILE, BindMode.READ_ONLY);
         mapResourceParameterAsVolume("certs", "/"); //FIXME needed only for testHttpsredirect make this more configurable
         withNetworkMode("my-net");
-        withCreateContainerCmdModifier(cmd -> cmd.withIpv6Address(this.ipv6));
+        withCreateContainerCmdModifier(cmd ->
+            cmd.withIpv4Address(this.ipv4.getHostAddress())
+                .withIpv6Address(this.ipv6.getHostAddress())
+        );
         addExposedPorts(DEFAULT_HTTP_PORT, DEFAULT_HTTPS_PORT, 4000, 4001, 81);
     }
 
@@ -56,14 +65,14 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
         return Collections.singleton(getMappedPort(DEFAULT_HTTP_PORT));
     }
 
-    static public SozuContainer newSozuContainer(String ipv6) {
+    static public SozuContainer newSozuContainer(Inet4Address ipv4, Inet6Address ipv6, String configFile) {
         String envPathSozuDockerfile = System.getenv("SOZU_DOCKERFILE");
 
         if (envPathSozuDockerfile == null || envPathSozuDockerfile.isEmpty()) {
-            return new SozuContainer(ipv6);
+            return new SozuContainer(ipv4, ipv6, configFile);
         }
         else {
-            return new SozuContainer(envPathSozuDockerfile, ipv6);
+            return new SozuContainer(envPathSozuDockerfile, ipv4, ipv6, configFile);
         }
     }
 
@@ -85,7 +94,7 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
             //TODO: change the WORKDIR in Dockerfile to avoid to use ../../
             add("../../sozuctl");
             add("-c");
-            add("/etc/sozu/config.toml");
+            add(MOUNT_POINT_CONFIG_FILE);
             add(command);
             addAll(args);
         }};

@@ -12,10 +12,7 @@ import org.testcontainers.utility.MountableFile;
 import utils.Backend;
 
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.*;
 import java.nio.file.Paths;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +41,7 @@ public class SozuContainerTest {
     public static NodeBackendContainer nodeWebsocket = new NodeBackendContainer("172.18.0.7", Paths.get("node-backends/server-websocket.js"), 8006);
 
     @Rule
-    public SozuContainer sozuContainer = SozuContainer.newSozuContainer("2002:ac14::ff");
+    public SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config.toml");
 
     private ToStringConsumer toStringSozuConsumer;
 
@@ -58,7 +55,7 @@ public class SozuContainerTest {
         }
     };
 
-    public SozuContainerTest() throws URISyntaxException {}
+    public SozuContainerTest() throws URISyntaxException, UnknownHostException {}
 
     @Before
     public void beforeEach() {

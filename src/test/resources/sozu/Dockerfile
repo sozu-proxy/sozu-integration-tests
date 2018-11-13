@@ -24,8 +24,6 @@ RUN echo `ls -l os-build/docker`
 
 RUN mkdir -p /etc/sozu
 
-RUN cp os-build/docker/config.toml /etc/sozu
-
 RUN apk update && apk add --no-cache openssl-dev \
   llvm-libunwind \
   libgcc
@@ -38,8 +36,6 @@ RUN echo `ls /`
 
 ENV SOZU_CONFIG /etc/sozu/config.toml
 
-VOLUME /etc/sozu
-
 RUN mkdir -p /run/sozu
 VOLUME /run/sozu
 
@@ -48,4 +44,4 @@ EXPOSE 443
 
 ENTRYPOINT ["/sozu"]
 
-CMD ["start", "-c", "/etc/sozu/config.toml"]
+CMD ["start", "-c", "/config.toml"]
