@@ -27,6 +27,12 @@ Use this subnet in your Sozu `config.toml` for the backends address.
 
 `gradle test` or `./gradlew test` (add `--info` or `--debug`) to run the tests suite.
 
+**Run only one test:**s
+
+`./gradlew test --tests "<testClass>.<testName>" --info`
+
+e.g.: `./gradlew test --tests "SozuContainerTest.testRetryPolicy" --info`
+
 This can take additional time to run the test suite the first time because of the download (and buid) of the docker images.
 `testcontainers` doesn't check if the local docker image of your container as the same version as the one on docker hub.
 So you have to `docker pull <your image>` if you work with docker image from docker HUB in your tests.
