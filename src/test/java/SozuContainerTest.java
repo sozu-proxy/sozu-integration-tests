@@ -2,6 +2,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.http.HttpResponse;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONObject;
 import org.junit.*;
 import org.junit.rules.ErrorCollector;
 import org.junit.rules.TestWatcher;
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.core.IsNot.not;
@@ -492,5 +494,38 @@ public class SozuContainerTest {
 
         nodeBackend.stop();
         sozuContainer.stop();
+    }
+
+    @Test
+    public void testProxyProtocolWithCorrectForwardedHeaders() throws Exception {
+        SozuContainer sozuContainerSendProxy = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff01"), "sozu/config/send-proxy.toml");
+        SozuContainer sozuContainerExpectProxy = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.4"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff02"), "sozu/config/expect-proxy.toml");
+        sozuContainerSendProxy.withExposedPorts(SozuContainer.DEFAULT_HTTP_PORT);
+
+        NodeBackendContainer nodeBackend = new NodeBackendContainer("172.18.0.5", Paths.get("node-backends/app-forwarded-headers.js"), 8000);
+
+        nodeBackend.start();
+        sozuContainerExpectProxy.start();
+        sozuContainerSendProxy.start();
+
+        sozuContainerExpectProxy.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
+        sozuContainerSendProxy.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
+        URL sozuUrl = sozuContainerSendProxy.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+
+        final HttpResponse curlResult = curl("-H 'Host: send.com' " + sozuUrl.toString());
+        InputStream in = curlResult.getEntity().getContent();
+        String rawBody = IOUtils.toString(in, "UTF-8");
+        JSONObject jsonBody = new JSONObject(rawBody);
+
+        collector.checkThat(HttpURLConnection.HTTP_OK, equalTo(curlResult.getStatusLine().getStatusCode()));
+        // We use
+        collector.checkThat(true, equalTo(Pattern.matches("proto=http;for=172\\.18\\.0\\.1:[0-9]*;by=172\\.18\\.0\\.3", jsonBody.getString("forwarded"))));
+        collector.checkThat("http", equalTo(jsonBody.getString("x-forwarded-proto")));
+        collector.checkThat("172.18.0.1", equalTo(jsonBody.getString("x-forwarded-for"))); // IP of the docker gateway in the network bridge
+        collector.checkThat("80", equalTo(jsonBody.getString("x-forwarded-port")));
+
+        nodeBackend.stop();
+        sozuContainerSendProxy.stop();
+        sozuContainerExpectProxy.stop();
     }
 }
