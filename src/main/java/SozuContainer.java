@@ -57,7 +57,6 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
             cmd.withIpv4Address(this.ipv4.getHostAddress())
                 .withIpv6Address(this.ipv6.getHostAddress())
         );
-        addExposedPorts(DEFAULT_HTTP_PORT, DEFAULT_HTTPS_PORT, 4000, 4001, 81);
     }
 
     @Override

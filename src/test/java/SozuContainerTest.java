@@ -10,6 +10,7 @@ import org.testcontainers.containers.output.ToStringConsumer;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 import org.testcontainers.utility.MountableFile;
 import utils.Backend;
+import utils.LoadBalancingPolicy;
 
 import java.io.InputStream;
 import java.net.*;
@@ -31,18 +32,6 @@ public class SozuContainerTest {
 
     private final static Logger log = Logger.getLogger(SozuContainerTest.class.getName());
 
-    @ClassRule
-    public static NodeBackendContainer nodeBackend = new NodeBackendContainer("172.18.0.5", Paths.get("node-backends/app-simple.js"), 8004);
-
-    @ClassRule
-    public static NodeBackendContainer nodeBackendHttp100 = new NodeBackendContainer("172.18.0.6", Paths.get("node-backends/app-http-continue.js"), 8005);
-
-    @ClassRule
-    public static NodeBackendContainer nodeWebsocket = new NodeBackendContainer("172.18.0.7", Paths.get("node-backends/server-websocket.js"), 8006);
-
-    @Rule
-    public SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config.toml");
-
     private ToStringConsumer toStringSozuConsumer;
 
     @Rule
@@ -51,20 +40,28 @@ public class SozuContainerTest {
         @Override
         protected void failed(Throwable e, Description description) {
             String sozuLogs = toStringSozuConsumer.toUtf8String();
-            System.out.println(sozuLogs);
+            System.out.print(sozuLogs);
         }
     };
-
-    public SozuContainerTest() throws URISyntaxException, UnknownHostException {}
 
     @Before
     public void beforeEach() {
         toStringSozuConsumer = new ToStringConsumer();
-        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
     }
+
+    public SozuContainerTest() {}
 
     @Test
     public void testCorrectResponseFromSozu() throws Exception {
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/basic.toml");
+        NodeBackendContainer nodeBackend = new NodeBackendContainer("172.18.0.4", Paths.get("node-backends/app-simple.js"), 8000);
+        sozuContainer.addExposedPort(SozuContainer.DEFAULT_HTTP_PORT);
+
+        sozuContainer.start();
+        nodeBackend.start();
+
+
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
         URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
 
         final HttpResponse curlResult = curl("-H 'Host: example.com' " + sozuUrl.toString());
@@ -73,22 +70,40 @@ public class SozuContainerTest {
 
         assertEquals(HttpURLConnection.HTTP_OK, curlResult.getStatusLine().getStatusCode());
         assertEquals("Hello Node.js Server!", body);
+
+        nodeBackend.stop();
+        sozuContainer.stop();
     }
 
     @Test
     public void shouldNotPanicWhenHostIsEmpty() throws Exception {
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/basic.toml");
+        sozuContainer.addExposedPort(SozuContainer.DEFAULT_HTTP_PORT);
+
+        sozuContainer.start();
+
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
         URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
 
         final HttpResponse curlResult = curl("-H 'Host: ' " + sozuUrl.toString());
 
         assertEquals(HttpURLConnection.HTTP_NOT_FOUND, curlResult.getStatusLine().getStatusCode());
+        sozuContainer.stop();
     }
 
     @Test
     public void shouldGet100ContinueStatusCode() throws Exception {
-        URL sozuUrl = sozuContainer.getBaseUrl("http", 4000);
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/basic.toml");
+        NodeBackendContainer nodeBackendHttp100 = new NodeBackendContainer("172.18.0.4", Paths.get("node-backends/app-http-continue.js"), 8000);
+        sozuContainer.addExposedPort(SozuContainer.DEFAULT_HTTP_PORT);
 
-        final HttpResponse curlResult = curl("-H 'Host: continue.com' "
+        sozuContainer.start();
+        nodeBackendHttp100.start();
+
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
+        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+
+        final HttpResponse curlResult = curl("-H 'Host: example.com' "
             + "-H 'Expect: 100-continue' "
             + "-H 'Content-Type: application/text' "
             + "-d 'yolo' "
@@ -96,11 +111,21 @@ public class SozuContainerTest {
 
         //TODO: assert equal HTTP 100 (that need to use another HTTP client)
         assertEquals(200, curlResult.getStatusLine().getStatusCode());
+        sozuContainer.stop();
+        nodeBackendHttp100.stop();
     }
 
     @Test
     public void shouldWorkWithWebsocket() throws Exception {
-        URI sozuUri = sozuContainer.getBaseUri("ws", 4001);
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/websocket.toml");
+        NodeBackendContainer websocketBackend = new NodeBackendContainer("172.18.0.4", Paths.get("node-backends/server-websocket.js"), 8000);
+        sozuContainer.addExposedPort(SozuContainer.DEFAULT_HTTP_PORT);
+
+        websocketBackend.start();
+        sozuContainer.start();
+
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
+        URI sozuUri = sozuContainer.getBaseUri("ws", SozuContainer.DEFAULT_HTTP_PORT);
 
         CompletableFuture future = new CompletableFuture();
         final String messageEcho = "echo";
@@ -117,11 +142,11 @@ public class SozuContainerTest {
             }
 
             @Override
-            public void onClose(int i, String s, boolean b) {
-            }
+            public void onClose(int i, String s, boolean b) {}
 
             @Override
             public void onError(Exception e) {
+                fail("Websocket connection got the error: " + e.getMessage());
             }
         };
 
@@ -131,16 +156,27 @@ public class SozuContainerTest {
             String res = (String) future.get(2, TimeUnit.SECONDS);
             assertEquals(messageEcho, res);
         } catch(TimeoutException e) {
+            sozuContainer.stop();
+            websocketBackend.stop();
             fail("We never receive the backend response");
         }
+        sozuContainer.stop();
+        websocketBackend.stop();
     }
 
     @Test
     public void testHttpCircuitBreaker() throws Exception {
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.8"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff02"), "sozu/config/circuit.toml");
+        sozuContainer.addExposedPort(SozuContainer.DEFAULT_HTTP_PORT);
+
+        sozuContainer.start();
+
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
+
         final HttpResponse res;
 
-        ToStringConsumer toStringConsumer = new ToStringConsumer();
-        sozuContainer.followOutput(toStringConsumer, OutputFrame.OutputType.STDOUT);
+        ToStringConsumer sozuLogsConsumer = new ToStringConsumer();
+        sozuContainer.followOutput(sozuLogsConsumer, OutputFrame.OutputType.STDOUT);
 
         URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
 
@@ -148,21 +184,40 @@ public class SozuContainerTest {
 
         assertEquals(HttpURLConnection.HTTP_UNAVAILABLE, res.getStatusLine().getStatusCode());
 
-        String sozuLogs = toStringConsumer.toUtf8String();
+        String sozuLogs = sozuLogsConsumer.toUtf8String();
         assertTrue(sozuLogs.contains("max connection attempt reached"));
+        sozuContainer.stop();
     }
 
     @Test
     public void testRetryPolicy() throws Exception {
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/basic.toml");
+        NodeBackendContainer nodeBackendContainer = new NodeBackendContainer("172.18.0.4", Paths.get("node-backends/app-simple.js"), 8000);
+        sozuContainer.addExposedPort(SozuContainer.DEFAULT_HTTP_PORT);
+
+        nodeBackendContainer.start();
+        sozuContainer.start();
+
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
         URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
 
-        HttpResponse res = curl("-H 'Connection: close' -H 'Host: retry.com' " + sozuUrl.toString());
+        HttpResponse res = curl("-H 'Connection: close' -H 'Host: example.com' " + sozuUrl.toString());
 
         assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
+        sozuContainer.stop();
+        nodeBackendContainer.stop();
     }
 
     @Test
     public void testPathbegin() throws Exception {
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/pathbegin.toml");
+        NodeBackendContainer nodeBackendContainer = new NodeBackendContainer("172.18.0.4", Paths.get("node-backends/app-simple.js"), 8000);
+        sozuContainer.addExposedPort(SozuContainer.DEFAULT_HTTP_PORT);
+
+        sozuContainer.start();
+        nodeBackendContainer.start();
+
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
         URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
 
         // see config.toml
@@ -175,10 +230,20 @@ public class SozuContainerTest {
 
         assertEquals(HTTP_UNAVAILABLE, res.getStatusLine().getStatusCode());
         assertEquals(HTTP_OK, resWithPathBegin.getStatusLine().getStatusCode());
+        sozuContainer.stop();
+        nodeBackendContainer.stop();
     }
 
     @Test
     public void testPathbeginWithKeepAlive() throws Exception {
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/pathbegin.toml");
+        NodeBackendContainer nodeBackendContainer = new NodeBackendContainer("172.18.0.4", Paths.get("node-backends/app-simple.js"), 8000);
+        sozuContainer.addExposedPort(SozuContainer.DEFAULT_HTTP_PORT);
+
+        sozuContainer.start();
+        nodeBackendContainer.start();
+
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
         URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
 
         // see config.toml
@@ -191,14 +256,25 @@ public class SozuContainerTest {
 
         assertEquals(HTTP_UNAVAILABLE, res.getStatusLine().getStatusCode());
         assertEquals(HTTP_OK, resWithPathBegin.getStatusLine().getStatusCode());
+        sozuContainer.stop();
+        nodeBackendContainer.stop();
     }
 
     @Test
     public void testRemoveBackendBetweenRequests() throws Exception {
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/remove-backend-between-requests.toml");
+        sozuContainer.addExposedPort(SozuContainer.DEFAULT_HTTP_PORT);
+
+        sozuContainer.start();
+
+        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
+
         HttpResponse res;
         String body;
         String appId = "removebackendbetweenrequests";
-        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+
+        sozuContainer.addApplication(appId, LoadBalancingPolicy.ROUNDROBIN);
 
 
         Backend backend1 = new Backend("rogue", "172.18.0.8", 8000);
@@ -231,14 +307,20 @@ public class SozuContainerTest {
 
         nodeBackend1.stop();
         nodeBackend2.stop();
+        sozuContainer.stop();
     }
 
     @Test
     public void testStickySessions () throws Exception {
-        String appId = "stickysession";
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/sticky_session.toml");
+        sozuContainer.addExposedPort(SozuContainer.DEFAULT_HTTP_PORT);
+
+        sozuContainer.start();
+
         URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
 
-
+        String appId = "stickysession";
         // Set up an application with two backends, and sticky sessions with a specific sticky id (see config.toml)
         Backend backend1 = new Backend("rogue", "172.18.0.10", 8002);
         Backend backend2 = new Backend("war", "172.18.0.11", 8003);
@@ -282,10 +364,17 @@ public class SozuContainerTest {
         nodeBackend1.stop();
         nodeBackend2.stop();
         nodeBackend3.stop();
+        sozuContainer.stop();
     }
 
     @Test
     public void testHttpsredirect() throws Exception {
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/https-redirect.toml");
+        sozuContainer.withExposedPorts(SozuContainer.DEFAULT_HTTP_PORT, SozuContainer.DEFAULT_HTTPS_PORT);
+
+        sozuContainer.start();
+
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
         URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
         int sozuHttpsPort = sozuContainer.getMappedPort(SozuContainer.DEFAULT_HTTPS_PORT);
 
@@ -325,10 +414,18 @@ public class SozuContainerTest {
         }
 
         nodeBackend.stop();
+        sozuContainer.stop();
     }
 
     @Test
     public void testConnectionWithIpv6() throws Exception {
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/ipv6.toml");
+        sozuContainer.withExposedPorts(SozuContainer.DEFAULT_HTTP_PORT);
+
+        sozuContainer.start();
+
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
+
         // Setup the backend with ipv6 address
         Backend backend = new Backend("paladin", "172.18.0.14", 8007);
         NodeBackendContainer nodeBackend = new NodeBackendContainer(backend.getAddress(), Paths.get("node-backends/app-simple.js"), backend.getPort());
@@ -336,7 +433,7 @@ public class SozuContainerTest {
         nodeBackend.start();
 
         //FIXME: find a java http client that can resolve a ipv6 address
-        Process p = Runtime.getRuntime().exec("curl -s -g -6 --resolve ipv6.com:81:[2002:ac14::ff] http://ipv6.com:81");
+        Process p = Runtime.getRuntime().exec("curl -s -g -6 --resolve ipv6.com:80:[2002:ac14::ff] http://ipv6.com:80");
 
         String stdout = IOUtils.toString(p.getInputStream(), "UTF-8");
         String stderr = IOUtils.toString(p.getErrorStream(), "UTF-8");
@@ -351,14 +448,22 @@ public class SozuContainerTest {
             nodeBackend.stop();
             fail();
         }
+        sozuContainer.stop();
+        nodeBackend.stop();
     }
 
     @Test
     public void testchunkedResponse() throws Exception {
-        String largeFilePath = "node-backends/lorem.txt";
+        SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/basic.toml");
+        sozuContainer.withExposedPorts(SozuContainer.DEFAULT_HTTP_PORT);
+
+        sozuContainer.start();
+
+        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
         URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
 
-        Backend backend = new Backend("waagh", "172.18.0.13", 8005);
+        String largeFilePath = "node-backends/lorem.txt";
+        Backend backend = new Backend("waagh", "172.18.0.4", 8000);
         NodeBackendContainer nodeBackend = new NodeBackendContainer(backend.getAddress(), Paths.get("node-backends/app-chunk-response.js"), backend.getPort());
         nodeBackend.withCopyFileToContainer(MountableFile.forClasspathResource(largeFilePath),"/");
         nodeBackend.withEnv("FILE", "lorem.txt");
@@ -366,7 +471,7 @@ public class SozuContainerTest {
 
 
         // The server sends a file as chunked response
-        HttpResponse res = curl("-H 'Host: chunkedresponse.com' " + sozuUrl.toString());
+        HttpResponse res = curl("-H 'Host: example.com' " + sozuUrl.toString());
         String transferEncoding = res.getFirstHeader("Transfer-Encoding").getValue();
 
         // Verify if the client receives all the packets and check the file sha1sum
@@ -380,5 +485,6 @@ public class SozuContainerTest {
         assertEquals(sha1Hex, sha1HexExpected);
 
         nodeBackend.stop();
+        sozuContainer.stop();
     }
 }
