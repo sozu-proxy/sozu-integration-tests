@@ -1,0 +1,37 @@
+saved_state = "/var/lib/sozu/state.json"
+log_level = "info"
+log_target = "stdout"
+
+command_socket = "/var/lib/sozu/"
+command_buffer_size = 16384
+max_command_buffer_size = 163840
+
+worker_count = 1
+worker_automatic_restart = false
+
+handle_process_affinity = false
+
+max_connections = 10
+
+max_buffers = 500
+buffer_size = 16384
+
+tls_provider = "rustls"
+
+[[listeners]]
+protocol = "http"
+address = "172.18.0.4:8001"
+expect_proxy = true
+
+[applications]
+
+[applications.MyApp]
+protocol = "http"
+
+frontends = [
+  { address = "172.18.0.4:8001", hostname="send.com"  }
+]
+
+backends = [
+  { address = "172.18.0.5:8000", weight = 100 },
+]
