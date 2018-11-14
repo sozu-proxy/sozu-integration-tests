@@ -1,0 +1,40 @@
+saved_state = "/var/lib/sozu/state.json"
+log_level = "info"
+log_target = "stdout"
+
+command_socket = "/var/lib/sozu/"
+command_buffer_size = 16384
+max_command_buffer_size = 163840
+
+worker_count = 1
+worker_automatic_restart = false
+
+handle_process_affinity = false
+
+max_connections = 50
+
+max_buffers = 500
+buffer_size = 16384
+
+tls_provider = "rustls"
+
+#IPV6 listener
+[[listeners]]
+protocol = "http"
+address = "0.0.0.0:80"
+
+
+[[listeners]]
+protocol = "http"
+address = "[2002:ac14::ff]:80"
+
+[applications]
+
+[applications.ipv6]
+protocol = "http"
+frontends = [
+    { address = "[2002:ac14::ff]:80", hostname = "ipv6.com" },
+]
+backends = [
+    { address = "[2002:ac14::ff01]:8007" }
+]

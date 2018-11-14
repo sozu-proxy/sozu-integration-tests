@@ -1,0 +1,35 @@
+saved_state = "/var/lib/sozu/state.json"
+log_level = "info"
+log_target = "stdout"
+
+command_socket = "/var/lib/sozu/"
+command_buffer_size = 16384
+max_command_buffer_size = 163840
+
+worker_count = 1
+worker_automatic_restart = false
+
+handle_process_affinity = false
+
+max_connections = 50
+
+max_buffers = 500
+buffer_size = 16384
+
+tls_provider = "rustls"
+
+[[listeners]]
+protocol = "http"
+address = "0.0.0.0:80"
+
+[applications]
+
+[applications.app]
+protocol = "http"
+frontends = [
+    # We need to set the hostname to localhost because it's not possible to define the host in the java websocket lib
+    { address = "0.0.0.0:80", hostname = "localhost" },
+]
+backends = [
+    { address = "172.18.0.4:8000" }
+]
