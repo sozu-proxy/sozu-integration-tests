@@ -3,6 +3,7 @@ import org.apache.http.HttpResponse;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.junit.*;
+import org.junit.rules.ErrorCollector;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.testcontainers.containers.output.OutputFrame;
@@ -21,9 +22,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static java.net.HttpURLConnection.HTTP_MOVED_PERM;
-import static java.net.HttpURLConnection.HTTP_OK;
-import static java.net.HttpURLConnection.HTTP_UNAVAILABLE;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assert.*;
 import static org.toilelibre.libe.curl.Curl.curl;
 
@@ -35,6 +35,9 @@ public class SozuContainerTest {
     private ToStringConsumer toStringSozuConsumer;
 
     @Rule
+    public ErrorCollector collector = new ErrorCollector();
+
+    @Rule
     // Use the test watcher to print the logs of sozu if a test failed
     public TestWatcher watcher = new TestWatcher() {
         @Override
@@ -43,6 +46,8 @@ public class SozuContainerTest {
             System.out.print(sozuLogs);
         }
     };
+
+
 
     @Before
     public void beforeEach() {
@@ -68,8 +73,8 @@ public class SozuContainerTest {
         InputStream in = curlResult.getEntity().getContent();
         String body = IOUtils.toString(in, "UTF-8");
 
-        assertEquals(HttpURLConnection.HTTP_OK, curlResult.getStatusLine().getStatusCode());
-        assertEquals("Hello Node.js Server!", body);
+        collector.checkThat(HttpURLConnection.HTTP_OK, equalTo(curlResult.getStatusLine().getStatusCode()));
+        collector.checkThat("Hello Node.js Server!", equalTo(body));
 
         nodeBackend.stop();
         sozuContainer.stop();
@@ -87,7 +92,7 @@ public class SozuContainerTest {
 
         final HttpResponse curlResult = curl("-H 'Host: ' " + sozuUrl.toString());
 
-        assertEquals(HttpURLConnection.HTTP_NOT_FOUND, curlResult.getStatusLine().getStatusCode());
+        collector.checkThat(HttpURLConnection.HTTP_NOT_FOUND, equalTo(curlResult.getStatusLine().getStatusCode()));
         sozuContainer.stop();
     }
 
@@ -110,7 +115,7 @@ public class SozuContainerTest {
             + sozuUrl.toString());
 
         //TODO: assert equal HTTP 100 (that need to use another HTTP client)
-        assertEquals(200, curlResult.getStatusLine().getStatusCode());
+        collector.checkThat(HttpURLConnection.HTTP_OK, equalTo(curlResult.getStatusLine().getStatusCode()));
         sozuContainer.stop();
         nodeBackendHttp100.stop();
     }
@@ -154,7 +159,7 @@ public class SozuContainerTest {
 
         try {
             String res = (String) future.get(2, TimeUnit.SECONDS);
-            assertEquals(messageEcho, res);
+            collector.checkThat(messageEcho, equalTo(res));
         } catch(TimeoutException e) {
             sozuContainer.stop();
             websocketBackend.stop();
@@ -182,10 +187,10 @@ public class SozuContainerTest {
 
         res = curl("-H 'Host: circuit.com' " + sozuUrl.toString());
 
-        assertEquals(HttpURLConnection.HTTP_UNAVAILABLE, res.getStatusLine().getStatusCode());
+        collector.checkThat(HttpURLConnection.HTTP_UNAVAILABLE, equalTo(res.getStatusLine().getStatusCode()));
 
         String sozuLogs = sozuLogsConsumer.toUtf8String();
-        assertTrue(sozuLogs.contains("max connection attempt reached"));
+        collector.checkThat(true, equalTo(sozuLogs.contains("max connection attempt reached")));
         sozuContainer.stop();
     }
 
@@ -203,7 +208,7 @@ public class SozuContainerTest {
 
         HttpResponse res = curl("-H 'Connection: close' -H 'Host: example.com' " + sozuUrl.toString());
 
-        assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
+        collector.checkThat(HttpURLConnection.HTTP_OK, equalTo(res.getStatusLine().getStatusCode()));
         sozuContainer.stop();
         nodeBackendContainer.stop();
     }
@@ -228,8 +233,8 @@ public class SozuContainerTest {
         HttpResponse res = curl(url);
         HttpResponse resWithPathBegin = curl(url + pathPrefix);
 
-        assertEquals(HTTP_UNAVAILABLE, res.getStatusLine().getStatusCode());
-        assertEquals(HTTP_OK, resWithPathBegin.getStatusLine().getStatusCode());
+        collector.checkThat(HttpURLConnection.HTTP_UNAVAILABLE, equalTo(res.getStatusLine().getStatusCode()));
+        collector.checkThat(HttpURLConnection.HTTP_OK, equalTo(resWithPathBegin.getStatusLine().getStatusCode()));
         sozuContainer.stop();
         nodeBackendContainer.stop();
     }
@@ -254,8 +259,8 @@ public class SozuContainerTest {
         HttpResponse res = curl(url);
         HttpResponse resWithPathBegin = curl(url + pathPrefix);
 
-        assertEquals(HTTP_UNAVAILABLE, res.getStatusLine().getStatusCode());
-        assertEquals(HTTP_OK, resWithPathBegin.getStatusLine().getStatusCode());
+        collector.checkThat(HttpURLConnection.HTTP_UNAVAILABLE, equalTo(res.getStatusLine().getStatusCode()));
+        collector.checkThat(HttpURLConnection.HTTP_OK, equalTo(resWithPathBegin.getStatusLine().getStatusCode()));
         sozuContainer.stop();
         nodeBackendContainer.stop();
     }
@@ -291,9 +296,9 @@ public class SozuContainerTest {
         // Check that we receive a response, and that it comes from the first backend
         sozuContainer.addBackend(appId, backend1.getId(), backend1.getAddressWithPort());
         res = curl(url);
-        assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
+        collector.checkThat(HttpURLConnection.HTTP_OK, equalTo(res.getStatusLine().getStatusCode()));
         body = IOUtils.toString(res.getEntity().getContent(), "UTF-8");
-        assertEquals(backend1.getId(), body);
+        collector.checkThat(backend1.getId(), equalTo(body));
 
 
         // Change the application's configuration in sozu to remove the first backend and replace it with the second one
@@ -301,9 +306,9 @@ public class SozuContainerTest {
         sozuContainer.removeBackend(appId, backend1.getId(), backend1.getAddressWithPort());
         res = curl(url);
         // Check that we receive a response, and that it comes from the second backend
-        assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
+        collector.checkThat(HttpURLConnection.HTTP_OK, equalTo(res.getStatusLine().getStatusCode()));
         body = IOUtils.toString(res.getEntity().getContent(), "UTF-8");
-        assertEquals(backend2.getId(), body);
+        collector.checkThat(backend2.getId(), equalTo(body));
 
         nodeBackend1.stop();
         nodeBackend2.stop();
@@ -342,7 +347,7 @@ public class SozuContainerTest {
         res = curl(urlWithCookie);
 
         String body = IOUtils.toString(res.getEntity().getContent(), "UTF-8");
-        assertEquals(firstContent, body);
+        collector.checkThat(firstContent, equalTo(body));
 
 
         // We remove all the backends and set up new ones
@@ -358,8 +363,8 @@ public class SozuContainerTest {
         res = curl(urlWithCookie);
 
         String bodyOfNewBackend = IOUtils.toString(res.getEntity().getContent(), "UTF-8");
-        assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
-        assertNotEquals(firstContent, bodyOfNewBackend);
+        collector.checkThat(HttpURLConnection.HTTP_OK, equalTo(res.getStatusLine().getStatusCode()));
+        collector.checkThat(bodyOfNewBackend, not(firstContent));
 
         nodeBackend1.stop();
         nodeBackend2.stop();
@@ -388,10 +393,10 @@ public class SozuContainerTest {
 
         // Verify that the proxy answers with a 301 to the HTTPS version
         HttpResponse res = curl("-H 'Host: httpsredirect.com' " + sozuUrl.toString());
-        assertEquals(HTTP_MOVED_PERM, res.getStatusLine().getStatusCode());
+        collector.checkThat(HttpURLConnection.HTTP_MOVED_PERM, equalTo(res.getStatusLine().getStatusCode()));
 
         String location = res.getFirstHeader("Location").getValue();
-        assertEquals("https://httpsredirect.com/", location);
+        collector.checkThat("https://httpsredirect.com/", equalTo(location));
 
 
         // The client does a HTTPS request
@@ -405,7 +410,7 @@ public class SozuContainerTest {
         // Verify that the server gets the correct protocol in the Forwarded-* headers
         if(!stdout.isEmpty()) {
             // The backend should return the x-forwarded-proto header content
-            assertEquals("https", stdout);
+            collector.checkThat("https", equalTo(stdout));
         }
         else {
             log.log(Level.SEVERE, stderr);
@@ -440,7 +445,7 @@ public class SozuContainerTest {
 
         // Verify that we get the backend response
         if(!stdout.isEmpty()) {
-            assertEquals("Hello Node.js Server!", stdout);
+            collector.checkThat("Hello Node.js Server!", equalTo(stdout));
         }
         else {
             log.log(Level.SEVERE, stderr);
@@ -475,14 +480,15 @@ public class SozuContainerTest {
         String transferEncoding = res.getFirstHeader("Transfer-Encoding").getValue();
 
         // Verify if the client receives all the packets and check the file sha1sum
-        assertEquals("chunked", transferEncoding);
-        assertEquals(HTTP_OK, res.getStatusLine().getStatusCode());
+        collector.checkThat("chunked", equalTo(transferEncoding));
+
+        collector.checkThat(HttpURLConnection.HTTP_OK, equalTo(res.getStatusLine().getStatusCode()));
         InputStream inputStreamContent = res.getEntity().getContent();
         InputStream inputStreamFile = this.getClass().getClassLoader().getResourceAsStream(largeFilePath);
 
         String sha1Hex = DigestUtils.sha1Hex(inputStreamContent);
         String sha1HexExpected = DigestUtils.sha1Hex(inputStreamFile);
-        assertEquals(sha1Hex, sha1HexExpected);
+        collector.checkThat(sha1Hex, equalTo(sha1HexExpected));
 
         nodeBackend.stop();
         sozuContainer.stop();
