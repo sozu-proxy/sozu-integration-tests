@@ -14,6 +14,7 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
+    testCompile group: 'org.slf4j', name: 'slf4j-simple', version: '1.6.2'
 
     compile "org.testcontainers:testcontainers:1.12.5"
     compile 'org.toile-libre.libe:curl:0.0.19'

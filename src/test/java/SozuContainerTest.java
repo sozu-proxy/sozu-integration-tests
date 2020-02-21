@@ -19,18 +19,20 @@ import java.nio.file.Paths;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assert.*;
 import static org.toilelibre.libe.curl.Curl.curl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
+import static org.testcontainers.containers.output.OutputFrame.OutputType.STDOUT;
 
 public class SozuContainerTest {
 
-    private final static Logger log = Logger.getLogger(SozuContainerTest.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(SozuContainerTest.class);
 
     private ToStringConsumer toStringSozuConsumer;
 
@@ -46,8 +48,6 @@ public class SozuContainerTest {
             System.out.print(sozuLogs);
         }
     };
-
-
 
     @Before
     public void beforeEach() {
@@ -65,8 +65,8 @@ public class SozuContainerTest {
         sozuContainer.start();
         nodeBackend.start();
 
+        sozuContainer.followOutput(new Slf4jLogConsumer(logger), STDOUT);
 
-        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
         URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
 
         final HttpResponse curlResult = curl("-H 'Host: example.com' " + sozuUrl.toString());
