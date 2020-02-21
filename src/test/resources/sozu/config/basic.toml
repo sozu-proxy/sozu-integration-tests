@@ -1,6 +1,6 @@
 saved_state = "/var/lib/sozu/state.json"
 log_level = "info"
-log_target = "stdout"
+log_target = "trace"
 
 command_socket = "/var/lib/sozu/"
 command_buffer_size = 16384
@@ -18,6 +18,8 @@ buffer_size = 16384
 
 tls_provider = "rustls"
 
+activate_listeners= true
+
 [[listeners]]
 protocol = "http"
 address = "0.0.0.0:80"
@@ -30,5 +32,5 @@ frontends = [
     { address = "0.0.0.0:80", hostname = "example.com" },
 ]
 backends = [
-    { address = "172.18.0.4:8000" }
+    { address = "172.18.0.4:8000", weight = 100 }
 ]
