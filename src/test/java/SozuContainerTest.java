@@ -413,7 +413,7 @@ public class SozuContainerTest {
             collector.checkThat("https", equalTo(stdout));
         }
         else {
-            log.log(Level.SEVERE, stderr);
+            logger.error(stderr);
             nodeBackend.stop();
             fail();
         }
@@ -448,7 +448,7 @@ public class SozuContainerTest {
             collector.checkThat("Hello Node.js Server!", equalTo(stdout));
         }
         else {
-            log.log(Level.SEVERE, stderr);
+            logger.error(stderr);
             sozuContainer.stop();
             nodeBackend.stop();
             fail();
