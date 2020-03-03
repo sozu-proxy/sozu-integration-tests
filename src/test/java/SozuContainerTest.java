@@ -423,6 +423,7 @@ public class SozuContainerTest {
     }
 
     @Test
+    @Ignore("Problem with docker daemon setup")
     public void testConnectionWithIpv6() throws Exception {
         SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/ipv6.toml");
         sozuContainer.withExposedPorts(SozuContainer.DEFAULT_HTTP_PORT);

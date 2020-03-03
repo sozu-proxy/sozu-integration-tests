@@ -55,7 +55,7 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
         withNetworkMode("my-net");
         withCreateContainerCmdModifier(cmd ->
             cmd.withIpv4Address(this.ipv4.getHostAddress())
-                .withIpv6Address(this.ipv6.getHostAddress())
+                //.withIpv6Address(this.ipv6.getHostAddress()) FIXME: got the error "user specified IP address is supported only when connecting to networks with user configured subnets" when IPv6 enabled
         );
     }
 
