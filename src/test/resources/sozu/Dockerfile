@@ -32,8 +32,6 @@ RUN cp target/release/sozu /
 
 RUN cp target/release/sozuctl /
 
-RUN echo `ls /`
-
 ENV SOZU_CONFIG /etc/sozu/config.toml
 
 RUN mkdir -p /run/sozu
@@ -44,4 +42,4 @@ EXPOSE 443
 
 ENTRYPOINT ["/sozu"]
 
-CMD ["start", "-c", "/config.toml"]
+CMD ["start", "-c", "/etc/sozu/config.toml"]

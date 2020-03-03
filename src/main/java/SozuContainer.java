@@ -20,7 +20,7 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
     public static final String IMAGE = "clevercloud/sozu";
     public static final String DEFAULT_TAG = "latest";
 
-    public static final String MOUNT_POINT_CONFIG_FILE = "/config.toml";
+    public static final String MOUNT_POINT_CONFIG_FILE = "/etc/sozu/config.toml";
 
     public static final int DEFAULT_HTTPS_PORT = 443;
     public static final int DEFAULT_HTTP_PORT= 80;
