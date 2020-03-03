@@ -1,7 +1,9 @@
-From docker
+FROM jenkins/jnlp-slave:alpine
 
-RUN apk --update add python
+USER root
 
-RUN docker --version
+RUN apk update && apk add -u libcurl curl
 
-CMD python -m SimpleHTTPServer 8080
+ARG DOCKER_VERSION=18.03.0-ce
+
+RUN curl -fsSL https://download.docker.com/linux/static/stable/`uname -m`/docker-$DOCKER_VERSION.tgz | tar --strip-components=1 -xz -C /usr/local/bin docker/docker
