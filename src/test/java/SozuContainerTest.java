@@ -375,51 +375,53 @@ public class SozuContainerTest {
     @Test
     public void testHttpsredirect() throws Exception {
         SozuContainer sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/https-redirect.toml");
+        sozuContainer = SozuContainer.newSozuContainer((Inet4Address) Inet4Address.getByName("172.18.0.3"), (Inet6Address) Inet6Address.getByName("2002:ac14::ff"), "sozu/config/https-redirect.toml");
         sozuContainer.withExposedPorts(SozuContainer.DEFAULT_HTTP_PORT, SozuContainer.DEFAULT_HTTPS_PORT);
-
-        sozuContainer.start();
-
-        sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
-        URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
-        int sozuHttpsPort = sozuContainer.getMappedPort(SozuContainer.DEFAULT_HTTPS_PORT);
-
-
         // Setup the backend with app-x-forwarded-proto.js as binary
         Backend backend = new Backend("paladin", "172.18.0.14", 8006);
         NodeBackendContainer nodeBackend = new NodeBackendContainer(backend.getAddress(), Paths.get("node-backends/app-x-forwarded-proto.js"), backend.getPort());
-        nodeBackend.start();
-        sozuContainer.addBackend("httpsredirect", backend.getId(), backend.getAddressWithPort());
+        try {
+            sozuContainer.start();
+
+            sozuContainer.followOutput(toStringSozuConsumer, OutputFrame.OutputType.STDOUT);
+            URL sozuUrl = sozuContainer.getBaseUrl("http", SozuContainer.DEFAULT_HTTP_PORT);
+            int sozuHttpsPort = sozuContainer.getMappedPort(SozuContainer.DEFAULT_HTTPS_PORT);
 
 
-        // Verify that the proxy answers with a 301 to the HTTPS version
-        HttpResponse res = curl("-H 'Host: httpsredirect.com' " + sozuUrl.toString());
-        collector.checkThat(HttpURLConnection.HTTP_MOVED_PERM, equalTo(res.getStatusLine().getStatusCode()));
-
-        String location = res.getFirstHeader("Location").getValue();
-        collector.checkThat("https://httpsredirect.com/", equalTo(location));
+            nodeBackend.start();
+            sozuContainer.addBackend("httpsredirect", backend.getId(), backend.getAddressWithPort());
 
 
-        // The client does a HTTPS request
-        // FIXME We set in a magic string the ip gateway of the bridge network until #17 is fixed
-        // TODO Maybe we should move the /certs folder in a better place
-        Process p = Runtime.getRuntime().exec("curl -s --cacert ./src/test/resources/certs/CA.pem --resolve httpsredirect.com:" + sozuHttpsPort + ":172.18.0.1 https://httpsredirect.com:" + sozuHttpsPort);
-        String stdout = IOUtils.toString(p.getInputStream(), "UTF-8");
-        String stderr = IOUtils.toString(p.getErrorStream(), "UTF-8");
+            // Verify that the proxy answers with a 301 to the HTTPS version
+            HttpResponse res = curl("-H 'Host: httpsredirect.com' " + sozuUrl.toString());
+            collector.checkThat(HttpURLConnection.HTTP_MOVED_PERM, equalTo(res.getStatusLine().getStatusCode()));
+
+            String location = res.getFirstHeader("Location").getValue();
+            collector.checkThat("https://httpsredirect.com/", equalTo(location));
 
 
-        // Verify that the server gets the correct protocol in the Forwarded-* headers
-        if(!stdout.isEmpty()) {
-            // The backend should return the x-forwarded-proto header content
-            collector.checkThat("https", equalTo(stdout));
-        }
-        else {
-            logger.error(stderr);
+            // The client does a HTTPS request
+            // FIXME We set in a magic string the ip gateway of the bridge network until #17 is fixed
+            // TODO Maybe we should move the /certs folder in a better place
+            Process p = Runtime.getRuntime().exec("curl -s --cacert ./src/test/resources/certs/CA.pem --resolve httpsredirect.com:" + sozuHttpsPort + ":172.18.0.1 https://httpsredirect.com:" + sozuHttpsPort);
+            String stdout = IOUtils.toString(p.getInputStream(), "UTF-8");
+            String stderr = IOUtils.toString(p.getErrorStream(), "UTF-8");
+
+
+            // Verify that the server gets the correct protocol in the Forwarded-* headers
+            if(!stdout.isEmpty()) {
+                // The backend should return the x-forwarded-proto header content
+                collector.checkThat("https", equalTo(stdout));
+            }
+            else {
+                logger.error(stderr);
+                nodeBackend.stop();
+                fail();
+            }
+        } finally {
             nodeBackend.stop();
-            fail();
+            sozuContainer.stop();
         }
-
-        nodeBackend.stop();
-        sozuContainer.stop();
     }
 
     @Test
