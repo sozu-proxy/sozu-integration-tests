@@ -21,9 +21,11 @@ public class NodeBackendContainer <SELF extends NodeBackendContainer<SELF>> exte
                     .withDockerfileFromBuilder(builder ->
                         builder
                             .from("node:latest")
-                            .copy("app.js", "app.js")
-                            .copy("package.json", "package.json")
+                            .run("mkdir app")
+                            .copy("app.js", "/app/app.js")
+                            .copy("package.json", "/app/package.json")
                             .expose(portHttp)
+                            .workDir("/app")
                             .run("npm install")
                             .cmd("node", "app.js")
                             .build()
