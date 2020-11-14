@@ -51,7 +51,7 @@ public class SozuContainer <SELF extends SozuContainer<SELF>> extends GenericCon
     @Override
     protected void configure() {
         withClasspathResourceMapping(this.configFile, MOUNT_POINT_CONFIG_FILE, BindMode.READ_ONLY);
-        mapResourceParameterAsVolume("certs", "/"); //FIXME needed only for testHttpsredirect make this more configurable
+        mapResourceParameterAsVolume("certs", "/certs"); //FIXME needed only for testHttpsredirect make this more configurable
         withNetworkMode("my-net");
         withCreateContainerCmdModifier(cmd ->
             cmd.withIpv4Address(this.ipv4.getHostAddress())
